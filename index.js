@@ -1,0 +1,300 @@
+const express = require('express');
+const { getUsuario, addUsuario, login } = require('./models/usuario');
+const { getProductosCantidadMinima, addProducto, searchProductByCode, searchProductByName, searchProductByDesc, modifyProduct, deleteProduct } = require('./models/producto');
+const { getEntradasInventario, addEntradaInventario } = require('./models/entradaInventario');
+const { getSalidasInventario, addSalidaInventario } = require('./models/salidaInventario');
+const { getSalidaParticular, addSalidaParticular } = require('./models/salidaParticular');
+const { getDevolucion, addDevolucion } = require('./models/devolucion');
+const pool = require('./config/database');
+const jwt = require('jsonwebtoken');
+const app = express();
+app.use(express.json());
+
+const JWT_SECRET = "Qwertyuiopasdfghjkl()ñzxcvbnm[]qwsasdñlkmsdlsñldfkl";
+
+// Verificar la conexión
+pool.connect((err, client, release) => {
+  if (err) {
+    return console.error('Error adquiriendo cliente', err.stack);
+  }
+  client.query('SELECT NOW()', (err, result) => {
+    release();
+    if (err) {
+      return console.error('Error ejecutando query', err.stack);
+    }
+    console.log('Conexión exitosa:', result.rows);
+  });
+});
+
+//Mostrar la lista de usuarios de la DB
+app.get('/usuarios', async (req, res) => {
+  try {
+    const usuarios = await getUsuario();
+    res.json(usuarios);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//Registrar un nuevo usuario
+app.post('/usuarios', async (req, res) => {
+  try {
+    const nuevoUsuario = await addUsuario(req.body);
+    res.status(201).json(nuevoUsuario);
+  } catch (err) {
+    res.status(500).json({ error: 'Error agregando el usuario' });
+  }
+});
+
+//Login
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const usuario = await login(email, password);
+    if (!usuario) {
+      return res.status(400).json({ message: 'Email o contraseña incorrectos' });
+    }
+
+    // Crear token
+    const token = jwt.sign({ id: usuario.id, email: usuario.email, nombre: usuario.nombre }, JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({ token });
+  } catch (error) {
+    console.error('Error en /login:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+//Agregar un nuevo producto
+app.post('/productos', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
+    const nuevoProducto = await addProducto(req.body, usuarioID, nombre);
+    res.status(201).json(nuevoProducto);
+  } catch (error) {
+    res.status(500).json({ error: 'Error registrando el producto' });
+  }
+});
+
+//Mostrar la lista de productos de la DB
+app.get('/productos/all', async (req, res) => {
+  try {
+    const productos = await getProductos();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//Buscar productos por código, nombre o descripción
+app.get('/productos', async (req, res) => {
+  const { type, param } = req.query;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    let searchResult;
+    if (type === 'code') {
+      searchResult = await searchProductByCode(param);
+    } else if (type === 'name') {
+      searchResult = await searchProductByName(param);
+    } else if (type === 'description') {
+      searchResult = await searchProductByDesc(param);
+    } else {
+      return res.status(400).json({ error: 'Parámetro de consulta inválido' });
+    }
+
+    res.json(searchResult);
+  } catch (error) {
+    console.error('Error buscando productos', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+//modificar productos
+app.put('/productos/modify/:code', async (req, res) => {
+  const code = req.params.code;
+  const newData = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
+    const productoModificado = await modifyProduct(code, newData, usuarioID, nombre);
+    res.json(productoModificado);
+  } catch (error) {
+    console.error('Error modificando el producto', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+//Aumentar la cantidad de un producto
+app.post('/productos/entrada', async (req, res) => {
+  const entrada = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+    const result = await addEntradaInventario(entrada, usuarioID, nombre);
+    res.status(201).json(result);
+
+  } catch (error) {
+    console.error('Error en la verificación del token', error);
+    res.status(401).json({ error: 'Token de autorización inválido' });
+  }
+});
+
+//Dismnuir la cantidad de un producto
+app.post('/productos/salida', async (req, res) => {
+  const salida = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
+    const result = await addSalidaInventario(salida, usuarioID, nombre);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Error en el endpoint /salida', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+//eliminar producto
+app.delete('/productos/eliminar/:codigo', async (req, res) => {
+  const { codigo } = req.params;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
+    const result = await deleteProduct(codigo, usuarioID, nombre);
+    res.status(200).json({ message: 'Producto eliminado exitosamente', data: result });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el producto' });
+  }
+});
+
+//agregar salida particular
+app.post('/productos/salida-particular', async (req, res) => {
+  const salida = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
+    const result = await addSalidaParticular(salida, usuarioID, nombre);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Error en el endpoint /salida', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+//agregar devolucion
+app.post('/productos/devolucion', async (req, res) => {
+  const devolucion = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+    const result = await addDevolucion(devolucion, usuarioID, nombre);
+    res.status(201).json(result);
+
+  } catch (error) {
+    console.error('Error en la verificación del token', error);
+    res.status(401).json({ error: 'Token de autorización inválido' });
+  }
+});
+
+//productos en cantidad minima
+app.get('/productos/cantidad-minima', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  
+  try {
+    const productos = await getProductosCantidadMinima();
+    res.status(200).json(productos);
+  } catch (error) {
+    console.error('Error en /productos/cantidadMinima:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
