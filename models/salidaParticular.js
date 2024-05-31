@@ -1,12 +1,12 @@
-// models/salidasParticulares.js
 const pool = require('../config/database');
+const { enviarNotificacion } = require('../models/notificacion');
 
 const getSalidaParticular = async () => {
   const res = await pool.query('SELECT * FROM bodega.SalidasParticulares');
   return res.rows;
 };
 
-const addSalidaParticular = async (salida, usuarioID, nombre) => {
+const addSalidaParticular = async (salida, usuarioID, nombre, email) => {
   const { codigoProducto, cantidad, motivo} = salida;
 
   try {
@@ -50,6 +50,14 @@ const addSalidaParticular = async (salida, usuarioID, nombre) => {
       'INSERT INTO bodega.Bitacora (UsuarioID, Responsable, ActividadID, TipoActividad, fechahora, Detalles) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)',
       [usuarioID, nombre, res.rows[0].id, "Salida particular", JSON.stringify({ codigoProducto, cantidad})]
     );
+
+    //revisa si debe enviar notificacion
+    if(queryResult.rows[0].cantidadminima >= nuevaCantidad){
+      await enviarNotificacion(codigoProducto, queryResult.rows[0].nombre, nuevaCantidad ,email);
+      await pool.query(
+        'INSERT INTO bodega.Notificaciones (CodigoProducto, CantidadActual, CantidadMinima, Fecha, Estado, Responsable) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5) RETURNING *',
+        [codigoProducto, nuevaCantidad, queryResult.rows[0].cantidadminima, "Cantidad minima", nombre]);
+    }
 
     // Confirmar la transacción
     await pool.query('COMMIT');

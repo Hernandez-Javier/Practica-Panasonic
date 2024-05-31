@@ -45,6 +45,7 @@ const addDevolucion = async (devolucion, usuarioID, nombre) => {
       [codigoProducto, cantidad, motivo, nombre]
     );
 
+    //registro de bitacora
     await pool.query(
       'INSERT INTO bodega.Bitacora (UsuarioID, Responsable, ActividadID, TipoActividad, fechahora, Detalles) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)',
       [usuarioID, nombre, res.rows[0].id, "Devolucion", JSON.stringify({ codigoProducto, cantidad})]

@@ -9,10 +9,12 @@
   "author": "Javier Hernandez",
   "license": "ISC",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.3",
     "bcrypt": "^5.1.1",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.13",
     "pg": "^8.11.5"
   },
   "description": ""

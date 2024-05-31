@@ -5,12 +5,24 @@ const { getEntradasInventario, addEntradaInventario } = require('./models/entrad
 const { getSalidasInventario, addSalidaInventario } = require('./models/salidaInventario');
 const { getSalidaParticular, addSalidaParticular } = require('./models/salidaParticular');
 const { getDevolucion, addDevolucion } = require('./models/devolucion');
+const { getDepartamento, addDepartamento, deleteDepartamento } = require('./models/departamento');
+const { getUbicacion, addUbicacion, deleteUbicacion, } = require('./models/ubicacion');
+const { enviarNotificacion } = require('./models/notificacion');
 const pool = require('./config/database');
 const jwt = require('jsonwebtoken');
 const app = express();
 app.use(express.json());
 
 const JWT_SECRET = "Qwertyuiopasdfghjkl()ñzxcvbnm[]qwsasdñlkmsdlsñldfkl";
+
+app.get('/notif', async (req, res) => {
+  try {
+    const notificacion = await enviarNotificacion(req.body);
+    res.json(notificacion);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
 
 // Verificar la conexión
 pool.connect((err, client, release) => {
@@ -38,6 +50,11 @@ app.get('/usuarios', async (req, res) => {
 
 //Registrar un nuevo usuario
 app.post('/usuarios', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
   try {
     const nuevoUsuario = await addUsuario(req.body);
     res.status(201).json(nuevoUsuario);
@@ -57,7 +74,7 @@ app.post('/login', async (req, res) => {
     }
 
     // Crear token
-    const token = jwt.sign({ id: usuario.id, email: usuario.email, nombre: usuario.nombre }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol }, JWT_SECRET, { expiresIn: '240h' });
 
     res.json({ token });
   } catch (error) {
@@ -90,8 +107,103 @@ app.post('/productos', async (req, res) => {
 
 //Mostrar la lista de productos de la DB
 app.get('/productos/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
   try {
     const productos = await getProductos();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//Mostrar lista de salidas de inventario
+app.get('/salidas/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const productos = await getSalidasInventario();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//Mostrar lista de salidas particulares
+app.get('/salidas-particulares/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const productos = await getSalidaParticular();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//lista de entradas
+app.get('/entradas/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const productos = await getEntradasInventario();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//lista de devoluciones
+app.get('/devoluciones/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const productos = await getDevolucion();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//lista de departamentos
+app.get('/departamentos/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const productos = await getDepartamento();
+    res.json(productos);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//lista de ubicaciones
+app.get('/ubicaciones/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const productos = await getUbicacion();
     res.json(productos);
   } catch (err) {
     res.status(500).json({ error: 'Error fetching users' });
@@ -193,8 +305,9 @@ app.post('/productos/salida', async (req, res) => {
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
     const nombre = decodedToken.nombre;
+    const email = decodedToken.email;
 
-    const result = await addSalidaInventario(salida, usuarioID, nombre);
+    const result = await addSalidaInventario(salida, usuarioID, nombre, email);
     res.status(201).json(result);
   } catch (error) {
     console.error('Error en el endpoint /salida', error);
@@ -242,8 +355,9 @@ app.post('/productos/salida-particular', async (req, res) => {
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
     const nombre = decodedToken.nombre;
+    const email = decodedToken.email;
 
-    const result = await addSalidaParticular(salida, usuarioID, nombre);
+    const result = await addSalidaParticular(salida, usuarioID, nombre, email);
     res.status(201).json(result);
   } catch (error) {
     console.error('Error en el endpoint /salida', error);
@@ -290,6 +404,104 @@ app.get('/productos/cantidad-minima', async (req, res) => {
   } catch (error) {
     console.error('Error en /productos/cantidadMinima:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+//agregar nuevo departamento
+app.post('/departamentos', async (req, res) => {
+  const departamento = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+    const result = await addDepartamento(departamento, usuarioID, nombre);
+    res.status(201).json(result);
+
+  } catch (error) {
+    console.error('Error en la verificación del token', error);
+    res.status(401).json({ error: 'Ha ocurrido un error en la base de datos' });
+  }
+});
+
+//eliminar departamento
+app.delete('/departamentos/eliminar/:nombre', async (req, res) => {
+  const { nombre } = req.params;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const responsable = decodedToken.nombre;
+
+    const result = await deleteDepartamento(nombre, usuarioID, responsable);
+    res.status(200).json({ message: 'Producto eliminado exitosamente', data: result });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el producto' });
+  }
+});
+
+//agregar nueva ubicacion
+app.post('/ubicacion', async (req, res) => {
+  const ubicacion = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+    const result = await addUbicacion(ubicacion, usuarioID, nombre);
+    res.status(201).json(result);
+
+  } catch (error) {
+    console.error('Error en la verificación del token', error);
+    res.status(401).json({ error: 'Ha ocurrido un error' });
+  }
+});
+
+//eliminar ubicacion
+app.delete('/ubicacion/eliminar/:nombre', async (req, res) => {
+  const { nombre } = req.params;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const responsable = decodedToken.nombre;
+
+    const result = await deleteUbicacion(nombre, usuarioID, responsable);
+    res.status(200).json({ message: 'Producto eliminado exitosamente', data: result });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el producto' });
   }
 });
 

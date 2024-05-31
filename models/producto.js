@@ -103,6 +103,7 @@ const modifyProduct = async (code, newData, usuarioID, responsable) => {
   }
 };
 
+//eliminar producto
 const deleteProduct = async (codigoProducto, usuarioID, nombre) => {
   try {
     // Iniciar la transacción
@@ -134,6 +135,7 @@ const deleteProduct = async (codigoProducto, usuarioID, nombre) => {
   }
 };
 
+//mostrar productos con cantidad minima
 const getProductosCantidadMinima = async () => {
   try {
     const res = await pool.query('SELECT * FROM bodega.Productos WHERE cantidad <= cantidadMinima');
