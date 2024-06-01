@@ -10,6 +10,9 @@ const getProductos = async () => {
 const addProducto = async (producto, usuarioID, responsable) => {
   const { codigo, nombre, descripcion, ubicacion, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioUnidadUSD, categoria } = producto;
   try {
+    // Iniciar la transacción
+    await pool.query('BEGIN');
+
     // Verificar si el producto ya existe
     const result = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
     if (result.rows.length > 0) {
@@ -30,8 +33,12 @@ const addProducto = async (producto, usuarioID, responsable) => {
       [usuarioID, responsable, res.rows[0].id, "Registro nuevo producto", JSON.stringify({ codigo })]
     );
 
+    // Confirmar la transacción
+    await pool.query('COMMIT');
     return res.rows[0];
   } catch (error) {
+    // Revertir la transacción en caso de error
+    await pool.query('ROLLBACK');
     console.error('Error registrando el producto', error);
     throw error;
   }

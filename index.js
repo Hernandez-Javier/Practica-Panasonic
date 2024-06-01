@@ -1,6 +1,6 @@
 const express = require('express');
 const { getUsuario, addUsuario, login } = require('./models/usuario');
-const { getProductosCantidadMinima, addProducto, searchProductByCode, searchProductByName, searchProductByDesc, modifyProduct, deleteProduct } = require('./models/producto');
+const { getProductos, getProductosCantidadMinima, addProducto, searchProductByCode, searchProductByName, searchProductByDesc, modifyProduct, deleteProduct } = require('./models/producto');
 const { getEntradasInventario, addEntradaInventario } = require('./models/entradaInventario');
 const { getSalidasInventario, addSalidaInventario } = require('./models/salidaInventario');
 const { getSalidaParticular, addSalidaParticular } = require('./models/salidaParticular');
@@ -11,7 +11,14 @@ const { enviarNotificacion } = require('./models/notificacion');
 const pool = require('./config/database');
 const jwt = require('jsonwebtoken');
 const app = express();
+const cors = require("cors");
+
 app.use(express.json());
+
+app.use(cors({
+  domains: '*',
+  methods: "*"
+}));
 
 const JWT_SECRET = "Qwertyuiopasdfghjkl()ñzxcvbnm[]qwsasdñlkmsdlsñldfkl";
 
@@ -86,13 +93,15 @@ app.post('/login', async (req, res) => {
 //Agregar un nuevo producto
 app.post('/productos', async (req, res) => {
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
   }
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
