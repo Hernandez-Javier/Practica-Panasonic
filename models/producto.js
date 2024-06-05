@@ -47,7 +47,7 @@ const addProducto = async (producto, usuarioID, responsable) => {
 //Buscar producto por codigo
 const searchProductByCode = async (codigo) => {
   try {
-    const res = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
+    const res = await pool.query('SELECT * FROM bodega.Productos WHERE codigo LIKE $1', ['%' + codigo + '%']);
     return res.rows;
   } catch (error) {
     console.error('Error buscando producto por código', error);
