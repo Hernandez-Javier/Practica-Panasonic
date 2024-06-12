@@ -2,7 +2,7 @@
 const pool = require('../config/database');
 
 const getDepartamento = async () => {
-  const res = await pool.query('SELECT * FROM bodega.Departamentos');
+  const res = await pool.query('SELECT * FROM bodega.Departamentos ORDER BY id DESC;');
   return res.rows;
 };
 

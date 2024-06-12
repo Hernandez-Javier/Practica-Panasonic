@@ -2,7 +2,7 @@ const pool = require('../config/database');
 
 //Obtener lista de productos
 const getProductos = async () => {
-  const res = await pool.query('SELECT * FROM bodega.Productos');
+  const res = await pool.query('SELECT * FROM bodega.productos ORDER BY id DESC');
   return res.rows;
 };
 

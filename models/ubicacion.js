@@ -2,7 +2,7 @@
 const pool = require('../config/database');
 
 const getUbicacion = async () => {
-  const res = await pool.query('SELECT * FROM bodega.Ubicaciones');
+  const res = await pool.query('SELECT * FROM bodega.ubicaciones ORDER BY id DESC;');
   return res.rows;
 };
 

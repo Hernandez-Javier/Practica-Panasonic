@@ -14,6 +14,7 @@ const addSalidaParticular = async (salida, usuarioID, nombre, email) => {
     await pool.query('BEGIN');
 
     // Consultar la cantidad actual y el precio total del producto
+    console.log(codigoProducto, cantidad, motivo);
     const queryResult = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigoProducto]);
     if (queryResult.rows.length === 0) {
       return { error: 'Producto no encontrado' };

@@ -1,8 +1,8 @@
 // models/bitacora.js
-const pool = require('./config/database');
+const pool = require('../config/database');
 
 const getBitacora = async () => {
-  const res = await pool.query('SELECT * FROM bodega.Bitacora');
+  const res = await pool.query('SELECT * FROM bodega.Bitacora ORDER BY id DESC');
   return res.rows;
 };
 

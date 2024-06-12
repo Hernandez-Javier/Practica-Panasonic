@@ -7,6 +7,7 @@ const { getSalidaParticular, addSalidaParticular } = require('./models/salidaPar
 const { getDevolucion, addDevolucion } = require('./models/devolucion');
 const { getDepartamento, addDepartamento, deleteDepartamento } = require('./models/departamento');
 const { getUbicacion, addUbicacion, deleteUbicacion, } = require('./models/ubicacion');
+const { getBitacora } = require('./models/bitacora');
 const { enviarNotificacion } = require('./models/notificacion');
 const pool = require('./config/database');
 const jwt = require('jsonwebtoken');
@@ -277,6 +278,8 @@ app.put('/productos/modify/:code', async (req, res) => {
 app.post('/productos/entrada', async (req, res) => {
   const entrada = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -284,7 +287,7 @@ app.post('/productos/entrada', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -302,6 +305,8 @@ app.post('/productos/entrada', async (req, res) => {
 app.post('/productos/salida', async (req, res) => {
   const salida = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -309,7 +314,7 @@ app.post('/productos/salida', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -328,6 +333,8 @@ app.post('/productos/salida', async (req, res) => {
 app.delete('/productos/eliminar/:codigo', async (req, res) => {
   const { codigo } = req.params;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -335,7 +342,7 @@ app.delete('/productos/eliminar/:codigo', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -352,6 +359,7 @@ app.delete('/productos/eliminar/:codigo', async (req, res) => {
 app.post('/productos/salida-particular', async (req, res) => {
   const salida = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -359,13 +367,14 @@ app.post('/productos/salida-particular', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
     const nombre = decodedToken.nombre;
     const email = decodedToken.email;
 
+    console.log('aquiiiiii',tokenn, salida)
     const result = await addSalidaParticular(salida, usuarioID, nombre, email);
     res.status(201).json(result);
   } catch (error) {
@@ -378,6 +387,8 @@ app.post('/productos/salida-particular', async (req, res) => {
 app.post('/productos/devolucion', async (req, res) => {
   const devolucion = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -385,7 +396,7 @@ app.post('/productos/devolucion', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -420,6 +431,7 @@ app.get('/productos/cantidad-minima', async (req, res) => {
 app.post('/departamentos', async (req, res) => {
   const departamento = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -427,7 +439,7 @@ app.post('/departamentos', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -445,6 +457,7 @@ app.post('/departamentos', async (req, res) => {
 app.delete('/departamentos/eliminar/:nombre', async (req, res) => {
   const { nombre } = req.params;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -452,7 +465,7 @@ app.delete('/departamentos/eliminar/:nombre', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -466,9 +479,10 @@ app.delete('/departamentos/eliminar/:nombre', async (req, res) => {
 });
 
 //agregar nueva ubicacion
-app.post('/ubicacion', async (req, res) => {
+app.post('/ubicaciones', async (req, res) => {
   const ubicacion = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -476,7 +490,7 @@ app.post('/ubicacion', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -491,9 +505,10 @@ app.post('/ubicacion', async (req, res) => {
 });
 
 //eliminar ubicacion
-app.delete('/ubicacion/eliminar/:nombre', async (req, res) => {
+app.delete('/ubicaciones/eliminar/:nombre', async (req, res) => {
   const { nombre } = req.params;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -501,7 +516,7 @@ app.delete('/ubicacion/eliminar/:nombre', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -514,6 +529,20 @@ app.delete('/ubicacion/eliminar/:nombre', async (req, res) => {
   }
 });
 
+//mostrar la bitacora
+app.get('/bitacora/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const bitacora = await getBitacora();
+    res.json(bitacora);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
