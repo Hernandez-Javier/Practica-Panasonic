@@ -2,7 +2,7 @@ const pool = require('../config/database');
 const { enviarNotificacion } = require('../models/notificacion');
 
 const getSalidaParticular = async () => {
-  const res = await pool.query('SELECT * FROM bodega.SalidasParticulares');
+  const res = await pool.query('SELECT * FROM bodega.SalidasParticulares ORDER BY id DESC');
   return res.rows;
 };
 

@@ -16,7 +16,7 @@ const addProducto = async (producto, usuarioID, responsable) => {
     // Verificar si el producto ya existe
     const result = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
     if (result.rows.length > 0) {
-      return { error: 'El codigo del producto ya existe' };
+      return { error: 'El codigo del producto ya existe', statusCode: 409 };
     }
     // Calcular el precio total
     const precioTotalCol = precioUnidadCol * cantidad;
@@ -100,7 +100,7 @@ const modifyProduct = async (code, newData, usuarioID, responsable) => {
     //entrada en la bitacora
     await pool.query(
       'INSERT INTO bodega.Bitacora (UsuarioID, Responsable, ActividadID, TipoActividad, fechahora, Detalles) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)',
-      [usuarioID, responsable, res.rows[0].id, "Modificar producto", JSON.stringify({ code })]
+      [usuarioID, responsable, res.rows[0].id, "Modificar producto", JSON.stringify( code )]
     );
 
     return res.rows[0];

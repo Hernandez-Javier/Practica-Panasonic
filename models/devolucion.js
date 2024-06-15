@@ -2,7 +2,7 @@
 const pool = require('../config/database');
 
 const getDevolucion = async () => {
-  const res = await pool.query('SELECT * FROM bodega.Devoluciones');
+  const res = await pool.query('SELECT * FROM bodega.Devoluciones ORDER BY id DESC');
   return res.rows;
 };
 

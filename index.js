@@ -109,6 +109,10 @@ app.post('/productos', async (req, res) => {
     const nombre = decodedToken.nombre;
 
     const nuevoProducto = await addProducto(req.body, usuarioID, nombre);
+
+    if (nuevoProducto.error) {
+      return res.status(nuevoProducto.statusCode).json({ error: nuevoProducto.error });
+    }
     res.status(201).json(nuevoProducto);
   } catch (error) {
     res.status(500).json({ error: 'Error registrando el producto' });
@@ -253,6 +257,7 @@ app.put('/productos/modify/:code', async (req, res) => {
   const code = req.params.code;
   const newData = req.body;
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -260,7 +265,7 @@ app.put('/productos/modify/:code', async (req, res) => {
 
   try {
     // Verificar y decodificar el token
-    const decodedToken = jwt.verify(token, JWT_SECRET);
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
     // Obtener la información del usuario del token decodificado
     const usuarioID = decodedToken.id;
@@ -279,7 +284,6 @@ app.post('/productos/entrada', async (req, res) => {
   const entrada = req.body;
   const token = req.headers.authorization;
   const tokenn = token.split(' ')[1];
-  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });

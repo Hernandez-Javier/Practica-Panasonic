@@ -3,7 +3,7 @@ const { enviarNotificacion } = require('../models/notificacion');
 
 //Obtener las salidas de inventario
 const getSalidasInventario = async () => {
-  const res = await pool.query('SELECT * FROM bodega.SalidasInventario');
+  const res = await pool.query('SELECT * FROM bodega.SalidasInventario ORDER BY id DESC');
   return res.rows;
 };
 

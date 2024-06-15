@@ -3,7 +3,7 @@ const pool = require('../config/database');
 
 //Obtener las entradas al inventario
 const getEntradasInventario = async () => {
-  const res = await pool.query('SELECT * FROM bodega.EntradasInventario');
+  const res = await pool.query('SELECT * FROM bodega.EntradasInventario ORDER BY id DESC');
   return res.rows;
 };
 
