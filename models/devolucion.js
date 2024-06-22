@@ -17,7 +17,7 @@ const addDevolucion = async (devolucion, usuarioID, nombre) => {
     // Consultar la cantidad actual y el precio total en del producto
     const queryResult = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigoProducto]);
     if (queryResult.rows.length === 0) {
-      return { error: 'Producto no encontrado' };
+      throw new Error('Producto no encontrado');
     }
     
     const cantidadActual = queryResult.rows[0].cantidad;
@@ -28,10 +28,6 @@ const addDevolucion = async (devolucion, usuarioID, nombre) => {
     const nuevaCantidad = cantidadActual + cantidad;
     const nuevoPrecioTotalCol = nuevaCantidad * precioCol;
     const nuevoPrecioTotalUSD = nuevaCantidad * precioUSD;
-
-    if (queryResult.rows.length === 0) {
-      return { error: 'Producto no encontrado' };
-    }
 
     // Actualizar la cantidad y los precios totales del producto
     const updateResult = await pool.query(

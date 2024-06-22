@@ -18,7 +18,7 @@ const addSalidaInventario = async (salida, usuarioID, nombre, email) => {
     // Consultar la cantidad actual y el precio total del producto
     const queryResult = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigoProducto]);
     if (queryResult.rows.length === 0) {
-      return { error: 'Producto no encontrado' };
+      throw new Error('Producto no encontrado');
     }
 
     const cantidadActual = queryResult.rows[0].cantidad;
@@ -32,7 +32,7 @@ const addSalidaInventario = async (salida, usuarioID, nombre, email) => {
 
     //verifica que la cantidad actual sea mayor a la cantidad por reducir
     if (cantidadActual < cantidad) {
-      return { error: 'La cantidad en inventario es muy baja' };
+      throw new Error('La cantidad en inventario es muy baja');
     }
 
     // Actualizar la cantidad y los precios totales del producto

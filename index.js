@@ -95,7 +95,6 @@ app.post('/login', async (req, res) => {
 app.post('/productos', async (req, res) => {
   const token = req.headers.authorization;
   const tokenn = token.split(' ')[1];
-  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -110,12 +109,13 @@ app.post('/productos', async (req, res) => {
 
     const nuevoProducto = await addProducto(req.body, usuarioID, nombre);
 
-    if (nuevoProducto.error) {
-      return res.status(nuevoProducto.statusCode).json({ error: nuevoProducto.error });
-    }
     res.status(201).json(nuevoProducto);
   } catch (error) {
-    res.status(500).json({ error: 'Error registrando el producto' });
+    if (error.message === 'El codigo del producto ya existe') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 });
 
@@ -130,7 +130,7 @@ app.get('/productos/all', async (req, res) => {
     const productos = await getProductos();
     res.json(productos);
   } catch (err) {
-    res.status(500).json({ error: 'Error fetching users' });
+    res.status(500).json({ error: err });
   }
 });
 
@@ -328,8 +328,14 @@ app.post('/productos/salida', async (req, res) => {
     const result = await addSalidaInventario(salida, usuarioID, nombre, email);
     res.status(201).json(result);
   } catch (error) {
-    console.error('Error en el endpoint /salida', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    if (error.message === 'Producto no encontrado') {
+      res.status(404).json({ error: error.message });
+    }
+    if(error.message === 'La cantidad en inventario es muy baja'){
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 });
 
@@ -378,12 +384,17 @@ app.post('/productos/salida-particular', async (req, res) => {
     const nombre = decodedToken.nombre;
     const email = decodedToken.email;
 
-    console.log('aquiiiiii',tokenn, salida)
     const result = await addSalidaParticular(salida, usuarioID, nombre, email);
     res.status(201).json(result);
   } catch (error) {
-    console.error('Error en el endpoint /salida', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    if (error.message === 'Producto no encontrado') {
+      res.status(404).json({ error: error.message });
+    }
+    if(error.message === 'La cantidad en inventario es muy baja'){
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 });
 
@@ -392,7 +403,6 @@ app.post('/productos/devolucion', async (req, res) => {
   const devolucion = req.body;
   const token = req.headers.authorization;
   const tokenn = token.split(' ')[1];
-  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -409,14 +419,18 @@ app.post('/productos/devolucion', async (req, res) => {
     res.status(201).json(result);
 
   } catch (error) {
-    console.error('Error en la verificación del token', error);
-    res.status(401).json({ error: 'Token de autorización inválido' });
+    if (error.message === 'Producto no encontrado') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 });
 
 //productos en cantidad minima
 app.get('/productos/cantidad-minima', async (req, res) => {
   const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });

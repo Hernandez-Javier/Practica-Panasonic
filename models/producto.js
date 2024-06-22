@@ -16,7 +16,7 @@ const addProducto = async (producto, usuarioID, responsable) => {
     // Verificar si el producto ya existe
     const result = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
     if (result.rows.length > 0) {
-      return { error: 'El codigo del producto ya existe', statusCode: 409 };
+      throw new Error('El codigo del producto ya existe');
     }
     // Calcular el precio total
     const precioTotalCol = precioUnidadCol * cantidad;
