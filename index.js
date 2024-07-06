@@ -1,6 +1,6 @@
 const express = require('express');
-const { getUsuario, addUsuario, login } = require('./models/usuario');
-const { getProductos, getProductosCantidadMinima, addProducto, searchProductByCode, searchProductByName, searchProductByDesc, modifyProduct, deleteProduct } = require('./models/producto');
+const { getUsuario, addUsuario, login, deleteUsuario, modifyUsuario } = require('./models/usuario');
+const { getProductos, getProductosCantidadMinima, addProducto, modifyProduct, deleteProduct, addProductosBatch } = require('./models/producto');
 const { getEntradasInventario, addEntradaInventario } = require('./models/entradaInventario');
 const { getSalidasInventario, addSalidaInventario } = require('./models/salidaInventario');
 const { getSalidaParticular, addSalidaParticular } = require('./models/salidaParticular');
@@ -66,8 +66,12 @@ app.post('/usuarios', async (req, res) => {
   try {
     const nuevoUsuario = await addUsuario(req.body);
     res.status(201).json(nuevoUsuario);
-  } catch (err) {
-    res.status(500).json({ error: 'Error agregando el usuario' });
+  } catch (error) {
+    if (error.message === 'El correo ya existe' || error.message === 'La identificación ya existe') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 });
 
@@ -113,6 +117,35 @@ app.post('/productos', async (req, res) => {
   } catch (error) {
     if (error.message === 'El codigo del producto ya existe') {
       res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+});
+
+// Endpoint para agregar múltiples productos
+app.post('/productos/upload', async (req, res) => {
+  const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la lista de productos del cuerpo de la solicitud
+    const productos = req.body;
+
+    // Agregar los productos a la base de datos
+    await addProductosBatch(productos);
+
+    res.status(201).json({ message: 'Productos registrados exitosamente' });
+  } catch (error) {
+    if (error.message.startsWith('El código del producto')) {
+      res.status(400).json({ error: error.message });
     } else {
       res.status(500).json({ error: 'Error interno del servidor' });
     }
@@ -225,7 +258,7 @@ app.get('/ubicaciones/all', async (req, res) => {
 });
 
 //Buscar productos por código, nombre o descripción
-app.get('/productos', async (req, res) => {
+/*app.get('/productos', async (req, res) => {
   const { type, param } = req.query;
   const token = req.headers.authorization;
 
@@ -250,7 +283,7 @@ app.get('/productos', async (req, res) => {
     console.error('Error buscando productos', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
-});
+});*/
 
 //modificar productos
 app.put('/productos/modify/:code', async (req, res) => {
@@ -273,6 +306,33 @@ app.put('/productos/modify/:code', async (req, res) => {
 
     const productoModificado = await modifyProduct(code, newData, usuarioID, nombre);
     res.json(productoModificado);
+  } catch (error) {
+    console.error('Error modificando el producto', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+//modificar usuarios
+app.put('/usuarios/modify/:code', async (req, res) => {
+  const code = req.params.code;
+  const newData = req.body;
+  const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
+    const usuarioModificado = await modifyUsuario(code, newData, usuarioID, nombre);
+    res.json(usuarioModificado);
   } catch (error) {
     console.error('Error modificando el producto', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -544,6 +604,31 @@ app.delete('/ubicaciones/eliminar/:nombre', async (req, res) => {
     res.status(200).json({ message: 'Producto eliminado exitosamente', data: result });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar el producto' });
+  }
+});
+
+//eliminar usuario
+app.delete('/usuarios/eliminar/:id', async (req, res) => {
+  const { id } = req.params;
+  const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const responsable = decodedToken.nombre;
+
+    const result = await deleteUsuario(id, usuarioID, responsable);
+    res.status(200).json({ message: 'Usuario eliminado exitosamente', data: result });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el objeto' });
   }
 });
 

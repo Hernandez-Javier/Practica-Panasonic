@@ -44,6 +44,42 @@ const addProducto = async (producto, usuarioID, responsable) => {
   }
 };
 
+//agregar una lista de productos
+const addProductosBatch = async (productos) => {
+  try {
+    await pool.query('BEGIN');
+
+    for (let producto of productos) {
+      const { codigo, nombre, descripcion, ubicacion, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioUnidadUSD, categoria } = producto;
+
+      try {
+        const result = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
+        if (result.rows.length > 0) {
+          console.warn(`El código del producto ${codigo} ya existe. Saltando...`);
+          continue; // Salta a la siguiente iteración del bucle si el producto ya existe
+        }
+
+        const precioTotalCol = precioUnidadCol * cantidad;
+        const precioTotalUSD = precioUnidadUSD * cantidad;
+
+        await pool.query(
+          'INSERT INTO bodega.Productos (Codigo, Nombre, Descripcion, Ubicacion, Proveedor, Cantidad, CantidadMinima, PrecioUnidadCol, PrecioTotalCol, PrecioUnidadUSD, PrecioTotalUSD, Categoria) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+          [codigo, nombre, descripcion, ubicacion, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioTotalCol, precioUnidadUSD, precioTotalUSD, categoria]
+        );
+      } catch (error) {
+        console.error(`Error al procesar el producto con código ${codigo}:`, error);
+        // No lanzar error aquí para que la operación continúe
+      }
+    }
+
+    await pool.query('COMMIT');
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error('Error registrando productos en lote:', error);
+    throw error;
+  }
+};
+
 //Buscar producto por codigo
 const searchProductByCode = async (codigo) => {
   try {
@@ -161,5 +197,6 @@ module.exports = {
   searchProductByDesc,
   modifyProduct,
   deleteProduct,
-  getProductosCantidadMinima
+  getProductosCantidadMinima,
+  addProductosBatch
 };
