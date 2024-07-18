@@ -53,15 +53,24 @@ const addProductosBatch = async (productos) => {
       const { codigo, nombre, descripcion, ubicacion, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioUnidadUSD, categoria } = producto;
 
       try {
-        const result = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
-        if (result.rows.length > 0) {
+        // Verificar si el producto ya existe
+        const resultProducto = await pool.query('SELECT * FROM bodega.Productos WHERE codigo = $1', [codigo]);
+        if (resultProducto.rows.length > 0) {
           console.warn(`El código del producto ${codigo} ya existe. Saltando...`);
-          continue; // Salta a la siguiente iteración del bucle si el producto ya existe
+          continue; // Saltar a la siguiente iteración del bucle si el producto ya existe
+        }
+
+        // Verificar si la ubicación existe
+        const resultUbicacion = await pool.query('SELECT * FROM bodega.Ubicaciones WHERE nombre = $1', [ubicacion]);
+        if (resultUbicacion.rows.length === 0) {
+          // Si no existe, agregar una nueva ubicación con la descripción de '.'
+          await pool.query('INSERT INTO bodega.Ubicaciones (nombre, descripcion) VALUES ($1, $2)', [ubicacion, '.']);
         }
 
         const precioTotalCol = precioUnidadCol * cantidad;
         const precioTotalUSD = precioUnidadUSD * cantidad;
 
+        // Insertar el producto
         await pool.query(
           'INSERT INTO bodega.Productos (Codigo, Nombre, Descripcion, Ubicacion, Proveedor, Cantidad, CantidadMinima, PrecioUnidadCol, PrecioTotalCol, PrecioUnidadUSD, PrecioTotalUSD, Categoria) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
           [codigo, nombre, descripcion, ubicacion, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioTotalCol, precioUnidadUSD, precioTotalUSD, categoria]
@@ -79,6 +88,7 @@ const addProductosBatch = async (productos) => {
     throw error;
   }
 };
+
 
 //Buscar producto por codigo
 const searchProductByCode = async (codigo) => {

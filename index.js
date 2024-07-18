@@ -5,8 +5,8 @@ const { getEntradasInventario, addEntradaInventario } = require('./models/entrad
 const { getSalidasInventario, addSalidaInventario } = require('./models/salidaInventario');
 const { getSalidaParticular, addSalidaParticular } = require('./models/salidaParticular');
 const { getDevolucion, addDevolucion } = require('./models/devolucion');
-const { getDepartamento, addDepartamento, deleteDepartamento } = require('./models/departamento');
-const { getUbicacion, addUbicacion, deleteUbicacion, } = require('./models/ubicacion');
+const { getDepartamento, addDepartamento, deleteDepartamento, modifyDepartamento } = require('./models/departamento');
+const { getUbicacion, addUbicacion, deleteUbicacion, modifyUbicacion } = require('./models/ubicacion');
 const { getBitacora } = require('./models/bitacora');
 const { enviarNotificacion } = require('./models/notificacion');
 const pool = require('./config/database');
@@ -256,34 +256,6 @@ app.get('/ubicaciones/all', async (req, res) => {
     res.status(500).json({ error: 'Error fetching users' });
   }
 });
-
-//Buscar productos por código, nombre o descripción
-/*app.get('/productos', async (req, res) => {
-  const { type, param } = req.query;
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
-  }
-
-  try {
-    let searchResult;
-    if (type === 'code') {
-      searchResult = await searchProductByCode(param);
-    } else if (type === 'name') {
-      searchResult = await searchProductByName(param);
-    } else if (type === 'description') {
-      searchResult = await searchProductByDesc(param);
-    } else {
-      return res.status(400).json({ error: 'Parámetro de consulta inválido' });
-    }
-
-    res.json(searchResult);
-  } catch (error) {
-    console.error('Error buscando productos', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});*/
 
 //modificar productos
 app.put('/productos/modify/:code', async (req, res) => {
@@ -606,6 +578,73 @@ app.delete('/ubicaciones/eliminar/:nombre', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar el producto' });
   }
 });
+
+//modificar ubicacion
+app.put('/ubicaciones/modificar/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, descripcion } = req.body;
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const tokenn = token.split(' ')[1];
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const responsable = decodedToken.nombre;
+
+    // Llamar a la función para modificar la ubicación
+    const result = await modifyUbicacion(id, { nombre, descripcion }, usuarioID, responsable);
+
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+
+    res.status(200).json({ message: 'Ubicación modificada exitosamente', data: result });
+  } catch (error) {
+    console.error('Error al modificar la ubicación', error);
+    res.status(500).json({ error: 'Error al modificar la ubicación' });
+  }
+});
+
+//modificar departamento
+app.put('/departamentos/modify/:id', async (req, res) => {
+  const { id } = req.params;
+  const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const responsable = decodedToken.nombre;
+
+    const { nombre, descripcion } = req.body;
+    const newData = { nombre, descripcion };
+
+    const result = await modifyDepartamento(id, newData, usuarioID, responsable);
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+    res.status(200).json({ message: 'Departamento modificado exitosamente', data: result });
+  } catch (error) {
+    console.error('Error al modificar el departamento:', error);
+    res.status(500).json({ error: 'Error al modificar el departamento' });
+  }
+});
+
+
 
 //eliminar usuario
 app.delete('/usuarios/eliminar/:id', async (req, res) => {
