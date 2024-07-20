@@ -3,13 +3,13 @@ const { enviarNotificacion } = require('../models/notificacion');
 
 //Obtener las salidas de inventario
 const getSalidasInventario = async () => {
-  const res = await pool.query('SELECT * FROM bodega.SalidasInventario ORDER BY id DESC');
+  const res = await pool.query('SELECT s.id, codigoproducto, cantidad, fecha, d.nombre as destino, solicitante, responsable FROM bodega.salidasinventario s join bodega.departamentos d on s.destino=d.id ORDER BY s.ID DESC');
   return res.rows;
 };
 
-//Agregar una nueva salida a inventario
+//Agregar una nueva salida a inventario (se recibirá el nombre del departamento y se hará la conversión a su id)
 const addSalidaInventario = async (salida, usuarioID, nombre, email) => {
-  const { codigoProducto, cantidad, destino, solicitante, responsable } = salida;
+  const { codigoProducto, cantidad, destino, solicitante } = salida; // Asegúrate de que `responsable` esté definido si lo usas.
 
   try {
     // Iniciar la transacción
@@ -30,35 +30,43 @@ const addSalidaInventario = async (salida, usuarioID, nombre, email) => {
     const nuevoPrecioTotalCol = nuevaCantidad * precioCol;
     const nuevoPrecioTotalUSD = nuevaCantidad * precioUSD;
 
-    //verifica que la cantidad actual sea mayor a la cantidad por reducir
+    // Verifica que la cantidad actual sea mayor a la cantidad por reducir
     if (cantidadActual < cantidad) {
       throw new Error('La cantidad en inventario es muy baja');
     }
 
+    // Obtener el ID del departamento basado en el nombre
+    const deptQueryResult = await pool.query('SELECT id FROM bodega.Departamentos WHERE nombre = $1', [destino]);
+    if (deptQueryResult.rows.length === 0) {
+      throw new Error('Departamento no encontrado');
+    }
+    const destinoId = deptQueryResult.rows[0].id;
+
     // Actualizar la cantidad y los precios totales del producto
     const updateResult = await pool.query(
-      'UPDATE bodega.Productos SET cantidad = $1, precioTotalCol = $2, precioTotalUSD = $3 WHERE codigo = $4 RETURNING *', 
+      'UPDATE bodega.Productos SET cantidad = $1, precioTotalCol = $2, precioTotalUSD = $3 WHERE codigo = $4 RETURNING *',
       [nuevaCantidad, nuevoPrecioTotalCol, nuevoPrecioTotalUSD, codigoProducto]
     );
 
-    //Insertar la salida en la DB
+    // Insertar la salida en la DB usando el ID del departamento
     const res = await pool.query(
       'INSERT INTO bodega.SalidasInventario (CodigoProducto, Cantidad, Fecha, Destino, Solicitante, Responsable) VALUES ($1, $2, CURRENT_TIMESTAMP, $3, $4, $5) RETURNING *',
-      [codigoProducto, cantidad, destino, solicitante, nombre]
+      [codigoProducto, cantidad, destinoId, solicitante, nombre]
     );
 
-    //agrega bitacora
+    // Agrega bitácora
     await pool.query(
       'INSERT INTO bodega.Bitacora (UsuarioID, Responsable, ActividadID, TipoActividad, fechahora, Detalles) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)',
-      [usuarioID, nombre, res.rows[0].id, "Salida de inventario", JSON.stringify({ codigoProducto, cantidad, destino, solicitante })]
+      [usuarioID, nombre, res.rows[0].id, "Salida de inventario", JSON.stringify({ codigoProducto, cantidad, destino: destinoId, solicitante })]
     );
 
-    //revisa si debe enviar notificacion
-    if(queryResult.rows[0].cantidadminima >= nuevaCantidad){
-      await enviarNotificacion(codigoProducto, queryResult.rows[0].nombre, nuevaCantidad ,email);
+    // Revisa si debe enviar notificación
+    if (queryResult.rows[0].cantidadminima >= nuevaCantidad) {
+      await enviarNotificacion(codigoProducto, queryResult.rows[0].nombre, nuevaCantidad, email);
       await pool.query(
         'INSERT INTO bodega.Notificaciones (CodigoProducto, CantidadActual, CantidadMinima, Fecha, Estado, Responsable) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5) RETURNING *',
-        [codigoProducto, nuevaCantidad, queryResult.rows[0].cantidadminima, "Cantidad minima", nombre]);
+        [codigoProducto, nuevaCantidad, queryResult.rows[0].cantidadminima, "Cantidad minima", nombre]
+      );
     }
 
     // Confirmar la transacción

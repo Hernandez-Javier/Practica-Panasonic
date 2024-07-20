@@ -2,7 +2,7 @@ const pool = require('../config/database');
 
 //Obtener lista de productos
 const getProductos = async () => {
-  const res = await pool.query('SELECT * FROM bodega.productos ORDER BY id DESC');
+  const res = await pool.query('SELECT p.ID, Codigo, p.Nombre, p.Descripcion, FechaEntrada, u.nombre as Ubicacion, Proveedor, Cantidad, CantidadMinima, PrecioUnidadCol, PrecioTotalCol, PrecioUnidadUSD, PrecioTotalUSD, Categoria FROM bodega.Productos p JOIN bodega.ubicaciones u ON p.ubicacion = u.id ORDER BY p.ID DESC;');
   return res.rows;
 };
 
@@ -61,19 +61,24 @@ const addProductosBatch = async (productos) => {
         }
 
         // Verificar si la ubicación existe
-        const resultUbicacion = await pool.query('SELECT * FROM bodega.Ubicaciones WHERE nombre = $1', [ubicacion]);
-        if (resultUbicacion.rows.length === 0) {
+        let ubicacionId;
+        const resultUbicacion = await pool.query('SELECT id FROM bodega.Ubicaciones WHERE nombre = $1', [ubicacion]);
+        if (resultUbicacion.rows.length > 0) {
+          // Obtener el ID de la ubicación existente
+          ubicacionId = resultUbicacion.rows[0].id;
+        } else {
           // Si no existe, agregar una nueva ubicación con la descripción de '.'
-          await pool.query('INSERT INTO bodega.Ubicaciones (nombre, descripcion) VALUES ($1, $2)', [ubicacion, '.']);
+          const insertResult = await pool.query('INSERT INTO bodega.Ubicaciones (nombre, descripcion) VALUES ($1, $2) RETURNING id', [ubicacion, '.']);
+          ubicacionId = insertResult.rows[0].id;
         }
 
         const precioTotalCol = precioUnidadCol * cantidad;
         const precioTotalUSD = precioUnidadUSD * cantidad;
 
-        // Insertar el producto
+        // Insertar el producto con el ID de la ubicación
         await pool.query(
           'INSERT INTO bodega.Productos (Codigo, Nombre, Descripcion, Ubicacion, Proveedor, Cantidad, CantidadMinima, PrecioUnidadCol, PrecioTotalCol, PrecioUnidadUSD, PrecioTotalUSD, Categoria) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-          [codigo, nombre, descripcion, ubicacion, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioTotalCol, precioUnidadUSD, precioTotalUSD, categoria]
+          [codigo, nombre, descripcion, ubicacionId, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioTotalCol, precioUnidadUSD, precioTotalUSD, categoria]
         );
       } catch (error) {
         console.error(`Error al procesar el producto con código ${codigo}:`, error);
@@ -85,40 +90,6 @@ const addProductosBatch = async (productos) => {
   } catch (error) {
     await pool.query('ROLLBACK');
     console.error('Error registrando productos en lote:', error);
-    throw error;
-  }
-};
-
-
-//Buscar producto por codigo
-const searchProductByCode = async (codigo) => {
-  try {
-    const res = await pool.query('SELECT * FROM bodega.Productos WHERE codigo LIKE $1', ['%' + codigo + '%']);
-    return res.rows;
-  } catch (error) {
-    console.error('Error buscando producto por código', error);
-    throw error;
-  }
-};
-
-//Buscar producto por nombre
-const searchProductByName = async (nombre) => {
-  try {
-    const res = await pool.query('SELECT * FROM bodega.Productos WHERE nombre LIKE $1', ['%' + nombre + '%']);
-    return res.rows;
-  } catch (error) {
-    console.error('Error buscando producto por nombre', error);
-    throw error;
-  }
-};
-
-//Buscar producto por descripción
-const searchProductByDesc = async (descripcion) => {
-  try {
-    const res = await pool.query('SELECT * FROM bodega.Productos WHERE descripcion LIKE $1', ['%' + descripcion + '%']);
-    return res.rows;
-  } catch (error) {
-    console.error('Error buscando producto por descripción', error);
     throw error;
   }
 };
@@ -202,9 +173,6 @@ const getProductosCantidadMinima = async () => {
 module.exports = {
   getProductos,
   addProducto,
-  searchProductByCode,
-  searchProductByName,
-  searchProductByDesc,
   modifyProduct,
   deleteProduct,
   getProductosCantidadMinima,

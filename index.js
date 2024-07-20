@@ -1,4 +1,9 @@
 const express = require('express');
+const pool = require('./config/database');
+const jwt = require('jsonwebtoken');
+const app = express();
+const cors = require("cors");
+
 const { getUsuario, addUsuario, login, deleteUsuario, modifyUsuario } = require('./models/usuario');
 const { getProductos, getProductosCantidadMinima, addProducto, modifyProduct, deleteProduct, addProductosBatch } = require('./models/producto');
 const { getEntradasInventario, addEntradaInventario } = require('./models/entradaInventario');
@@ -9,10 +14,6 @@ const { getDepartamento, addDepartamento, deleteDepartamento, modifyDepartamento
 const { getUbicacion, addUbicacion, deleteUbicacion, modifyUbicacion } = require('./models/ubicacion');
 const { getBitacora } = require('./models/bitacora');
 const { enviarNotificacion } = require('./models/notificacion');
-const pool = require('./config/database');
-const jwt = require('jsonwebtoken');
-const app = express();
-const cors = require("cors");
 
 app.use(express.json());
 
@@ -22,15 +23,6 @@ app.use(cors({
 }));
 
 const JWT_SECRET = "Qwertyuiopasdfghjkl()ñzxcvbnm[]qwsasdñlkmsdlsñldfkl";
-
-app.get('/notif', async (req, res) => {
-  try {
-    const notificacion = await enviarNotificacion(req.body);
-    res.json(notificacion);
-  } catch (err) {
-    res.status(500).json({ error: 'Error fetching users' });
-  }
-});
 
 // Verificar la conexión
 pool.connect((err, client, release) => {
@@ -44,6 +36,17 @@ pool.connect((err, client, release) => {
     }
     console.log('Conexión exitosa:', result.rows);
   });
+});
+
+
+//enviar notificaciones por correo
+app.get('/notif', async (req, res) => {
+  try {
+    const notificacion = await enviarNotificacion(req.body);
+    res.json(notificacion);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
 });
 
 //Mostrar la lista de usuarios de la DB
@@ -342,7 +345,6 @@ app.post('/productos/salida', async (req, res) => {
   const salida = req.body;
   const token = req.headers.authorization;
   const tokenn = token.split(' ')[1];
-  console.log(tokenn)
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
@@ -575,7 +577,7 @@ app.delete('/ubicaciones/eliminar/:nombre', async (req, res) => {
     const result = await deleteUbicacion(nombre, usuarioID, responsable);
     res.status(200).json({ message: 'Producto eliminado exitosamente', data: result });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar el producto' });
+    res.status(500).json({ error: 'Error al eliminar ubicacion' });
   }
 });
 
@@ -643,8 +645,6 @@ app.put('/departamentos/modify/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al modificar el departamento' });
   }
 });
-
-
 
 //eliminar usuario
 app.delete('/usuarios/eliminar/:id', async (req, res) => {
