@@ -44,8 +44,8 @@ const addUsuario = async (usuario) => {
     // Encriptar la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(contraseña, 10);
     const res = await pool.query(
-      'INSERT INTO bodega.Usuarios (apodo, identificacion, nombre, email, rol, contraseña) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [apodo, identificacion, nombre, email, rol, hashedPassword]
+      'INSERT INTO bodega.Usuarios (identificacion, nombre, email, rol, contraseña) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [identificacion, nombre, email, rol, hashedPassword]
     );
     return res.rows[0];
   } catch (err) {
@@ -104,8 +104,8 @@ const modifyUsuario = async (identificacion, newData, usuarioID, responsable) =>
 
     // Actualizar los datos del usuario
     const res = await pool.query(
-      'UPDATE bodega.Usuarios SET Apodo = $1, Nombre = $2, Email = $3, Rol = $4, Contraseña = $5 WHERE Identificacion = $6 RETURNING *',
-      [apodo, nombre, email, rol, hashedPassword, identificacion]
+      'UPDATE bodega.Usuarios SET Nombre = $1, Email = $2, Rol = $3, Contraseña = $4 WHERE Identificacion = $5 RETURNING *',
+      [nombre, email, rol, hashedPassword, identificacion]
     );
 
     // Entrada en la bitácora
@@ -121,10 +121,48 @@ const modifyUsuario = async (identificacion, newData, usuarioID, responsable) =>
   }
 };
 
+//Modificar usuario
+const resetUsuario = async (data) => {
+  const { code, password } = data;
+  if (!code || !password) {
+    throw new Error('Token y nueva contraseña son requeridos' );
+  }
+
+  try {
+    // Verificar el token
+    const result = await pool.query(
+      'SELECT * FROM bodega.usuarios WHERE reset_password_token = $1',
+      [code]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Token inválido o expirado');
+    }
+
+    const user = result.rows[0];
+    if (Date.now() > user.reset_password_expires) {
+      throw new Error('Token expirado');
+    }
+
+    // Actualizar la contraseña del usuario
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const res = await pool.query(
+      'UPDATE bodega.usuarios SET contraseña = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2 RETURNING *',
+      [hashedPassword, user.id]
+    );
+
+    return res.rows[0];
+  } catch (error) {
+    console.error('Error en el reinicio de contraseña:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+};
+
 module.exports = {
   getUsuario,
   addUsuario,
   login,
   deleteUsuario,
-  modifyUsuario
+  modifyUsuario,
+  resetUsuario
 };

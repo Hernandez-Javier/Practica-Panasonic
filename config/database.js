@@ -1,11 +1,11 @@
-// config/database.js
+// configuracion a db
 const { Pool } = require('pg');
 
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
   database: 'Bodega_Panasonic',
-  password: 'admin',
+  password: process.env.DB_pass,
   port: 5432,
 });
 

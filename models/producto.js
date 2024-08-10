@@ -45,7 +45,9 @@ const addProducto = async (producto, usuarioID, responsable) => {
 };
 
 //agregar una lista de productos
-const addProductosBatch = async (productos) => {
+const addProductosBatch = async (productos, usuarioID, responsable) => {
+  let count = 0;
+  
   try {
     await pool.query('BEGIN');
 
@@ -80,11 +82,18 @@ const addProductosBatch = async (productos) => {
           'INSERT INTO bodega.Productos (Codigo, Nombre, Descripcion, Ubicacion, Proveedor, Cantidad, CantidadMinima, PrecioUnidadCol, PrecioTotalCol, PrecioUnidadUSD, PrecioTotalUSD, Categoria) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
           [codigo, nombre, descripcion, ubicacionId, proveedor, cantidad, cantidadMinima, precioUnidadCol, precioTotalCol, precioUnidadUSD, precioTotalUSD, categoria]
         );
+
+        count ++;
       } catch (error) {
         console.error(`Error al procesar el producto con código ${codigo}:`, error);
         // No lanzar error aquí para que la operación continúe
       }
     }
+    // Entrada en la bitácora
+    await pool.query(
+      'INSERT INTO bodega.Bitacora (UsuarioID, Responsable, ActividadID, TipoActividad, fechahora, Detalles) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)',
+      [usuarioID, responsable, 0, "Importe de datos", `Se importaron ${count} productos`]
+    );
 
     await pool.query('COMMIT');
   } catch (error) {

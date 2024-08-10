@@ -1,10 +1,12 @@
+require('dotenv').config();
+
 const express = require('express');
 const pool = require('./config/database');
 const jwt = require('jsonwebtoken');
 const app = express();
 const cors = require("cors");
 
-const { getUsuario, addUsuario, login, deleteUsuario, modifyUsuario } = require('./models/usuario');
+const { getUsuario, addUsuario, login, deleteUsuario, modifyUsuario, resetUsuario } = require('./models/usuario');
 const { getProductos, getProductosCantidadMinima, addProducto, modifyProduct, deleteProduct, addProductosBatch } = require('./models/producto');
 const { getEntradasInventario, addEntradaInventario } = require('./models/entradaInventario');
 const { getSalidasInventario, addSalidaInventario } = require('./models/salidaInventario');
@@ -13,16 +15,16 @@ const { getDevolucion, addDevolucion } = require('./models/devolucion');
 const { getDepartamento, addDepartamento, deleteDepartamento, modifyDepartamento } = require('./models/departamento');
 const { getUbicacion, addUbicacion, deleteUbicacion, modifyUbicacion } = require('./models/ubicacion');
 const { getBitacora } = require('./models/bitacora');
-const { enviarNotificacion } = require('./models/notificacion');
+const { getNotificaciones, addNotificacion, deleteEmail, enviarNotificacion, enviarPass } = require('./models/notificacion');
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 app.use(cors({
   domains: '*',
   methods: "*"
 }));
 
-const JWT_SECRET = "Qwertyuiopasdfghjkl()ñzxcvbnm[]qwsasdñlkmsdlsñldfkl";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Verificar la conexión
 pool.connect((err, client, release) => {
@@ -38,7 +40,6 @@ pool.connect((err, client, release) => {
   });
 });
 
-
 //enviar notificaciones por correo
 app.get('/notif', async (req, res) => {
   try {
@@ -49,8 +50,67 @@ app.get('/notif', async (req, res) => {
   }
 });
 
+//enviar codigo de reset pass
+app.put('/reset', async (req, res) => {
+  try {
+    const notificacion = await enviarPass(req.body);
+    res.json(notificacion);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+//agregar email para notificaciones
+app.post('/notif', async (req, res) => {
+  const email = req.body;
+  const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+    const result = await addNotificacion(email, usuarioID, nombre);
+    res.status(201).json(result);
+
+  } catch (error) {
+    if (error.message === 'El correo ya existe') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+});
+
+//Mostrar la lista de los emails de notificaciones
+app.get('/notif/all', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+  try {
+    const emails = await getNotificaciones();
+    res.json(emails);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
 //Mostrar la lista de usuarios de la DB
 app.get('/usuarios', async (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
   try {
     const usuarios = await getUsuario();
     res.json(usuarios);
@@ -89,7 +149,7 @@ app.post('/login', async (req, res) => {
     }
 
     // Crear token
-    const token = jwt.sign({ id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol }, JWT_SECRET, { expiresIn: '240h' });
+    const token = jwt.sign({ id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol }, JWT_SECRET, { expiresIn: '12h' });
 
     res.json({ token });
   } catch (error) {
@@ -126,7 +186,7 @@ app.post('/productos', async (req, res) => {
   }
 });
 
-// Endpoint para agregar múltiples productos
+// Agregar múltiples productos
 app.post('/productos/upload', async (req, res) => {
   const token = req.headers.authorization;
   const tokenn = token.split(' ')[1];
@@ -139,11 +199,15 @@ app.post('/productos/upload', async (req, res) => {
     // Verificar y decodificar el token
     const decodedToken = jwt.verify(tokenn, JWT_SECRET);
 
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const nombre = decodedToken.nombre;
+
     // Obtener la lista de productos del cuerpo de la solicitud
     const productos = req.body;
 
     // Agregar los productos a la base de datos
-    await addProductosBatch(productos);
+    await addProductosBatch(productos, usuarioID, nombre);
 
     res.status(201).json({ message: 'Productos registrados exitosamente' });
   } catch (error) {
@@ -314,6 +378,19 @@ app.put('/usuarios/modify/:code', async (req, res) => {
   }
 });
 
+//reiniciar contraseña de usuarios
+app.put('/users/reset', async (req, res) => {
+  const newData = req.body;
+
+  try {
+    const usuarioModificado = await resetUsuario(newData);
+    res.json(usuarioModificado);
+  } catch (error) {
+    console.error('Error cambiando la contraseña', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 //Aumentar la cantidad de un producto
 app.post('/productos/entrada', async (req, res) => {
   const entrada = req.body;
@@ -403,11 +480,12 @@ app.delete('/productos/eliminar/:codigo', async (req, res) => {
 app.post('/productos/salida-particular', async (req, res) => {
   const salida = req.body;
   const token = req.headers.authorization;
-  const tokenn = token.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Token de autorización no proporcionado' });
   }
+
+  const tokenn = token.split(' ')[1];
 
   try {
     // Verificar y decodificar el token
@@ -421,16 +499,31 @@ app.post('/productos/salida-particular', async (req, res) => {
     const result = await addSalidaParticular(salida, usuarioID, nombre, email);
     res.status(201).json(result);
   } catch (error) {
+    console.error('Error en el endpoint de salida particular:', error);
+
+    // Manejo de errores específicos
     if (error.message === 'Producto no encontrado') {
-      res.status(404).json({ error: error.message });
+      return res.status(404).json({ error: error.message });
     }
-    if(error.message === 'La cantidad en inventario es muy baja'){
-      res.status(400).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Error interno del servidor' });
+
+    if (error.message === 'La cantidad en inventario es muy baja') {
+      return res.status(400).json({ error: error.message });
     }
+
+    // Manejo de errores de token
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Token no válido' });
+    }
+
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expirado' });
+    }
+
+    // Error interno del servidor
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
 
 //agregar devolucion
 app.post('/productos/devolucion', async (req, res) => {
@@ -665,6 +758,31 @@ app.delete('/usuarios/eliminar/:id', async (req, res) => {
     const responsable = decodedToken.nombre;
 
     const result = await deleteUsuario(id, usuarioID, responsable);
+    res.status(200).json({ message: 'Usuario eliminado exitosamente', data: result });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el objeto' });
+  }
+});
+
+//eliminar email de notificaciones
+app.delete('/notif/eliminar/:id', async (req, res) => {
+  const { id } = req.params;
+  const token = req.headers.authorization;
+  const tokenn = token.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autorización no proporcionado' });
+  }
+
+  try {
+    // Verificar y decodificar el token
+    const decodedToken = jwt.verify(tokenn, JWT_SECRET);
+
+    // Obtener la información del usuario del token decodificado
+    const usuarioID = decodedToken.id;
+    const responsable = decodedToken.nombre;
+
+    const result = await deleteEmail(id, usuarioID, responsable);
     res.status(200).json({ message: 'Usuario eliminado exitosamente', data: result });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar el objeto' });

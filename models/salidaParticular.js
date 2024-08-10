@@ -52,12 +52,13 @@ const addSalidaParticular = async (salida, usuarioID, nombre, email) => {
       [usuarioID, nombre, res.rows[0].id, "Salida particular", JSON.stringify({ codigoProducto, cantidad})]
     );
 
-    //revisa si debe enviar notificacion
-    if(queryResult.rows[0].cantidadminima >= nuevaCantidad){
-      await enviarNotificacion(codigoProducto, queryResult.rows[0].nombre, nuevaCantidad ,email);
+    // Revisa si debe enviar notificación
+    if (queryResult.rows[0].cantidadminima >= nuevaCantidad) {
+      await enviarNotificacion(codigoProducto, queryResult.rows[0].nombre, nuevaCantidad);
       await pool.query(
-        'INSERT INTO bodega.Notificaciones (CodigoProducto, CantidadActual, CantidadMinima, Fecha, Estado, Responsable) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5) RETURNING *',
-        [codigoProducto, nuevaCantidad, queryResult.rows[0].cantidadminima, "Cantidad minima", nombre]);
+        'INSERT INTO bodega.Bitacora (UsuarioID, Responsable, ActividadID, TipoActividad, fechahora, Detalles) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)',
+        [usuarioID, nombre, res.rows[0].id, "Notificación enviada", JSON.stringify({ codigoProducto, nuevaCantidad})]
+      );
     }
 
     // Confirmar la transacción
