@@ -1,4 +1,3 @@
-// models/notificaciones.js
 //const crypto = require('crypto');
 const pool = require('../config/database');
 const nodemailer = require('nodemailer');
@@ -9,8 +8,8 @@ const email_pass = process.env.email_pass;
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
   auth: {
-    user: 'fakechicharo18@gmail.com', // Reemplaza con tu correo
-    pass: email_pass // Reemplaza con tu contraseña o token de aplicación
+    user: 'fakechicharo18@gmail.com', // correo a usar
+    pass: email_pass // contraseña del correo o token
   }
 });
 
