@@ -28,6 +28,8 @@ app.use(cors({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+app.use(express.static(path.join(__dirname, 'build')));
+
 // Verificar la conexión
 pool.connect((err, client, release) => {
   if (err) {
@@ -805,8 +807,6 @@ app.get('/bitacora/all', async (req, res) => {
     res.status(500).json({ error: 'Error fetching users' });
   }
 });
-
-app.use(express.static(path.join(__dirname, 'build')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
