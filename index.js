@@ -809,7 +809,7 @@ app.get('/bitacora/all', async (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'Home.html'));
+  res.sendFile(path.join(__dirname, 'build', 'index.js'));
 });
 
 const PORT = process.env.PORT || 3000;
