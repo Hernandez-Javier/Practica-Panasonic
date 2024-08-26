@@ -5,7 +5,6 @@ const pool = require('./config/database');
 const jwt = require('jsonwebtoken');
 const app = express();
 const cors = require("cors");
-const path = require('path');
 
 
 const { getUsuario, addUsuario, login, deleteUsuario, modifyUsuario, resetUsuario } = require('./models/usuario');
@@ -28,7 +27,6 @@ app.use(cors({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-app.use(express.static(path.join(__dirname, '../build')));
 
 // Verificar la conexión
 pool.connect((err, client, release) => {
@@ -806,10 +804,6 @@ app.get('/bitacora/all', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Error fetching users' });
   }
-});
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
