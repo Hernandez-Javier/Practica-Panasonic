@@ -5,6 +5,8 @@ const pool = require('./config/database');
 const jwt = require('jsonwebtoken');
 const app = express();
 const cors = require("cors");
+const path = require('path');
+
 
 const { getUsuario, addUsuario, login, deleteUsuario, modifyUsuario, resetUsuario } = require('./models/usuario');
 const { getProductos, getProductosCantidadMinima, addProducto, modifyProduct, deleteProduct, addProductosBatch } = require('./models/producto');
