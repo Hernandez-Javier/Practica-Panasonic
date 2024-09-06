@@ -3,13 +3,26 @@ const pool = require('../config/database');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-const email_pass = process.env.email_pass;
+const email = process.env.email_dir;
+const host = process.env.email_host;
+const port = process.env.email_port;
+//const email_pass = process.env.email_pass;
+//const service = process.env.email_service;
+
+/*const transporter = nodemailer.createTransport({
+  service: service,
+  auth: {
+    user: email, // correo a usar
+    pass: email_pass // contraseña del correo o token
+  }
+});*/
 
 const transporter = nodemailer.createTransport({
-  service: 'Gmail',
-  auth: {
-    user: 'fakechicharo18@gmail.com', // correo a usar
-    pass: email_pass // contraseña del correo o token
+  host: host,
+  port: port,
+  secure: false,
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
@@ -74,10 +87,9 @@ const enviarNotificacion = async (codigo, nombre, cantidad) => {
   try {
     const result = await pool.query('SELECT email FROM bodega.emailnotificaciones');
     let emails = result.rows.map(row => row.email);
-    console.log(emails);
 
     const mailOptions = {
-      from: 'fakechicharo18@gmail.com',
+      from: email,
       subject: `Alerta de Inventario: ${nombre}`,
       text: `El producto ${nombre} (Código: ${codigo}) ha alcanzado su cantidad mínima. Cantidad actual: ${cantidad}. Por favor, revisa el inventario y realiza los pedidos necesarios.`
     };
